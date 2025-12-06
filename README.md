@@ -1,59 +1,74 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+Тестовое Задание на Laravel PHP
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Общая Информация
+- Мини-шлюз оплат
+- Цель: Реализовать упрощённый API для обработки платежей на фреймворке Laravel PHP.
+- Описание: Задача заключается в создании простого шлюза для симуляции платежных операций. Это включает создание модели данных, эндпоинтов API для создания, обработки и просмотра платежей. Проект должен включать в себя валидацию и обработку состояний.
 
-## About Laravel
+Требования к реализации
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+1. Модель Payment
+   Создать Eloquent-модель Payment с следующими полями:
+- uuid: Уникальный идентификатор платежа (строковый тип, генерируется автоматически).
+- amount: Сумма платежа (десятичное число, с поддержкой дробной части).
+- currency: Валютаплатежа (RUB, EUR, USD).
+- status: Статусплатежа (pending, success, failed).
+- created_at: Временная метка создания).
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Модель должна использовать миграции для создания соответствующей таблицы в базе данных. Рекомендуется использовать MySQL/Postgresql для тестирования.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+2. Эндпоинт: POST /payments
+- Описание: Создание нового платежа.
+- Входные Параметры:
+    - amount: Обязательный, положительное число, число от 1.
+    - currency: Обязательный.
+- Логика:
+    - Создать новую запись в модели Payment со статусом 'pending'.
+    - Сгенерировать и сохранить uuid.
+    - Вернуть в ответе только payment_uuid.
+- Ответ: JSON с полем `payment_uuid` (HTTP статус 201 Created).
+- Ошибки: Обработать валидацию и вернуть ошибки.
 
-## Learning Laravel
+3. Эндпоинт: POST /payments/{uuid}/process
+- Описание: Обработка платежа (симуляция успеха или неудачи).
+- Входные Параметры:
+    - success: Обязательный, булевый тип (true или false).
+- Логика:
+    - Найти платеж по uuid. Если не найден — вернуть ошибку (HTTP 404 NotFound).
+    - Если статус уже не 'pending' — не позволять обработку.
+- Обновитьстатусна 'success' (если success=true) или 'failed' (если success=false).
+- Опционально (плюсик): Логироватьсобытиевотдельнуютаблицу `payment_logs` (модель PaymentLog сполями: payment_uuid, action, timestamp). Action можетбыть 'processed_success' или 'processed_failed'.
+- Ответ: JSON собновлённойинформациейоплатежеилиподтверждением (HTTP 200 OK).
+- Ошибки: Валидация входа, проверка существования и статуса (HTTP 400 BadRequest или 422).
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+4. Эндпоинт: GET /payments/{uuid}
+- Описание: Получение информации о платеже.
+- Входные Параметры: Нет (только {uuid} в пути).
+- Логика:
+    - Найти платеж по uuid. Если не найден — вернуть ошибку.
+- Вернутьвсеполямодели: uuid, amount, currency, status, created_at.
+- Ответ: JSON с данными платежа (HTTP 200 OK).
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Дополнительные Требования
+- Валидация: Использовать встроенные валидаторы Laravel (Requestclasses) для всех эндпоинтов. Обеспечить обработку ошибок с понятными сообщениями.
+- Статусы: Реализовать логику переходов статусов (только из 'pending' в 'success' или 'failed'). Избегать недопустимых переходов.
+- Idempotency: Обеспечить, чтобы повторные вызовы /process не изменяли статус, если он уже обработан. Можно использовать проверки в контроллере.
+- Работа с Ресурсами: ИспользоватьResourceclasses для форматирования JSON-ответов (опционально, но рекомендуется для чистоты кода).
+- Структура Кода:
+    - Использовать middleware для ratelimiter (не обязательно).
+    - Обеспечить чистый, читаемый код, желательно с комментариями.
+    - База Данных: Использовать миграции для инициализации.
 
-## Laravel Sponsors
+Что проверяется
+- Качество валидации входных данных.
+- Корректность работы со статусами.
+- Поддержка idempotency.
+- Эффективная работа с ресурсами базы данных.
+- Общая структура кода: читаемость, организация, Laravelbestpractices.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+Инструкции по Выполнению
+- Используйте Laravel версии 12.
+- Проект должен быть загружен на GitHub.
 
-### Premium Partners
+Если возникнут вопросы по ТЗ, свяжитесь с нами. Удачи!
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
